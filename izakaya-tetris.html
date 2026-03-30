@@ -1,0 +1,1020 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>居酒屋テトリス</title>
+<!-- Google tag (gtag.js) -->
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-QP2TVBE5ZJ"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+  gtag('config', 'G-QP2TVBE5ZJ');
+</script>
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body {
+  background: #1a1a2e;
+  color: #eee;
+  font-family: 'Segoe UI', 'Hiragino Sans', sans-serif;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  min-height: 100vh;
+  padding: 20px;
+}
+h1 { font-size: 2em; margin-bottom: 20px; color: #ffd700; letter-spacing: 2px; }
+
+.screen { display: none; }
+.screen.active { display: flex; flex-direction: column; align-items: center; }
+
+/* Setup */
+#setup-screen { gap: 16px; }
+.panel { background: #2a2a3e; border-radius: 10px; padding: 14px; }
+.panel h3 { color: #ffd700; margin-bottom: 10px; font-size: 0.85em; text-transform: uppercase; letter-spacing: 1px; }
+.player-row { display: flex; gap: 8px; margin-bottom: 8px; }
+input[type=text] {
+  flex: 1; padding: 8px 12px; border-radius: 6px; border: 1px solid #444;
+  background: #1a1a2e; color: #eee; font-size: 1em;
+}
+input[type=text]:focus { outline: none; border-color: #ffd700; }
+button {
+  padding: 8px 16px; border-radius: 6px; border: none; cursor: pointer;
+  font-size: 0.95em; transition: opacity 0.15s;
+}
+button:hover { opacity: 0.8; }
+.btn-primary { background: #ffd700; color: #1a1a2e; font-weight: bold; }
+.btn-secondary { background: #444; color: #eee; }
+.btn-danger { background: #e74c3c; color: white; }
+.btn-success { background: #27ae60; color: white; font-weight: bold; }
+.btn-big { padding: 12px 36px; font-size: 1.1em; }
+
+/* Game screens */
+#phase1-screen, #phase2-screen {
+  flex-direction: row; gap: 20px; align-items: flex-start;
+}
+#phase2-right { display: flex; flex-direction: column; gap: 10px; width: 160px; }
+
+/* Counter */
+.counter-box { background: #2a2a3e; border-radius: 10px; padding: 14px; text-align: center; }
+.counter-label { font-size: 0.75em; color: #aaa; margin-bottom: 6px; }
+.counter-row { display: flex; align-items: center; justify-content: center; gap: 10px; }
+.counter-btn { width: 36px; height: 36px; font-size: 1.4em; font-weight: bold; border-radius: 8px; background: #444; color: #eee; padding: 0; line-height: 1; }
+.counter-value { font-size: 2em; font-weight: bold; min-width: 40px; }
+
+/* Card toggle list */
+.card-list-box { background: #2a2a3e; border-radius: 10px; padding: 12px; }
+.card-list-box h3 { color: #ffd700; font-size: 0.8em; margin-bottom: 10px; text-transform: uppercase; letter-spacing: 1px; }
+.card-toggle-row { display: flex; align-items: center; justify-content: space-between; padding: 5px 0; border-bottom: 1px solid #333; }
+.card-toggle-row:last-child { border-bottom: none; }
+.card-toggle-name { font-size: 0.9em; font-weight: bold; }
+
+/* Toggle switch */
+.toggle { position: relative; width: 38px; height: 22px; flex-shrink: 0; }
+.toggle input { opacity: 0; width: 0; height: 0; }
+.toggle-slider {
+  position: absolute; inset: 0; background: #555; border-radius: 22px; cursor: pointer; transition: 0.2s;
+}
+.toggle-slider:before {
+  content: ''; position: absolute; width: 16px; height: 16px; left: 3px; bottom: 3px;
+  background: white; border-radius: 50%; transition: 0.2s;
+}
+.toggle input:checked + .toggle-slider { background: #27ae60; }
+.toggle input:checked + .toggle-slider:before { transform: translateX(16px); }
+canvas { display: block; }
+#tetris-canvas, #phase2-canvas { border: 2px solid #333; border-radius: 4px; }
+
+.sidebar { display: flex; flex-direction: column; gap: 12px; width: 160px; }
+.score-value { font-size: 2em; font-weight: bold; }
+
+/* Phase 2 sidebar */
+.phase2-sidebar { display: flex; flex-direction: column; gap: 10px; width: 180px; }
+
+.player-turn-box {
+  background: #2a2a3e; border-radius: 10px; padding: 12px; text-align: center;
+  border: 2px solid #ffd700;
+}
+.player-turn-label { font-size: 0.75em; color: #aaa; margin-bottom: 4px; }
+.player-turn-name { font-size: 1.4em; font-weight: bold; color: #ffd700; }
+
+.card-box {
+  background: #2a2a3e; border-radius: 10px; padding: 14px; text-align: center;
+  min-height: 130px; display: flex; flex-direction: column;
+  align-items: center; justify-content: center; gap: 6px;
+}
+.card-label { font-size: 0.75em; color: #aaa; margin-bottom: 4px; }
+.card-piece-name { font-size: 2em; font-weight: bold; }
+.card-desc { font-size: 0.8em; color: #aaa; }
+
+.piece-selector { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; margin-top: 8px; }
+.piece-btn { padding: 6px 4px; font-size: 0.9em; font-weight: bold; border-radius: 4px; }
+
+.players-box { background: #2a2a3e; border-radius: 10px; padding: 12px; }
+.player-entry { padding: 3px 0; font-size: 0.9em; color: #aaa; }
+.player-entry.active { color: #ffd700; font-weight: bold; }
+
+.hint-box { background: #2a2a3e; border-radius: 10px; padding: 12px; font-size: 0.8em; line-height: 2; color: #ccc; }
+.deck-box { background: #2a2a3e; border-radius: 10px; padding: 10px; text-align: center; font-size: 0.85em; color: #aaa; }
+
+/* Overlay */
+.overlay {
+  position: fixed; inset: 0; background: rgba(0,0,0,0.82);
+  display: none; align-items: center; justify-content: center; z-index: 100;
+}
+.overlay.show { display: flex; }
+.overlay-box {
+  background: #2a2a3e; border-radius: 14px; padding: 36px 40px; text-align: center;
+  max-width: 420px; display: flex; flex-direction: column; gap: 14px;
+  box-shadow: 0 8px 32px rgba(0,0,0,0.6);
+}
+.overlay-box h2 { color: #ffd700; font-size: 1.8em; }
+.overlay-box p { color: #ccc; line-height: 1.6; }
+
+/* Help button */
+.help-btn {
+  position: fixed; top: 16px; right: 20px;
+  width: 36px; height: 36px; border-radius: 50%;
+  background: #2a2a3e; border: 2px solid #ffd700;
+  color: #ffd700; font-size: 1.1em; font-weight: bold;
+  cursor: pointer; z-index: 50; transition: background 0.2s;
+  display: flex; align-items: center; justify-content: center; padding: 0;
+}
+.help-btn:hover { background: #ffd700; color: #1a1a2e; }
+
+/* Manual overlay */
+#manual-overlay { align-items: flex-start; padding: 20px; overflow-y: auto; }
+.manual-box {
+  background: #1e1e30; border-radius: 14px; padding: 36px 40px;
+  max-width: 720px; width: 100%; margin: auto;
+  box-shadow: 0 8px 32px rgba(0,0,0,0.6);
+  position: relative;
+}
+.manual-close {
+  position: absolute; top: 16px; right: 20px;
+  background: #444; border: none; color: #eee;
+  width: 32px; height: 32px; border-radius: 50%;
+  font-size: 1.1em; cursor: pointer;
+  display: flex; align-items: center; justify-content: center; padding: 0;
+}
+.manual-close:hover { background: #e74c3c; }
+.manual-box h1 { color: #ffd700; font-size: 1.8em; margin-bottom: 6px; }
+.manual-box .m-subtitle { color: #888; font-size: 0.95em; margin-bottom: 32px; }
+.manual-box h2 { color: #ffd700; font-size: 1.2em; border-left: 4px solid #ffd700; padding-left: 10px; margin: 28px 0 14px; }
+.manual-box h3 { color: #ccc; font-size: 1em; margin: 16px 0 8px; }
+.manual-box p { color: #bbb; line-height: 1.8; margin-bottom: 10px; font-size: 0.95em; }
+.phase-block { background: #2a2a3e; border-radius: 10px; padding: 18px; margin-bottom: 12px; }
+.phase-tag { display: inline-block; padding: 3px 12px; border-radius: 20px; font-size: 0.75em; font-weight: bold; margin-bottom: 8px; letter-spacing: 1px; }
+.phase-tag.p1 { background: #2196f3; color: white; }
+.phase-tag.p2 { background: #e67e22; color: white; }
+.phase-block h3 { color: #ffd700; margin: 0 0 8px; }
+.m-steps { display: flex; flex-direction: column; gap: 10px; }
+.m-step { display: flex; gap: 14px; background: #2a2a3e; border-radius: 10px; padding: 14px; align-items: flex-start; }
+.m-step-num { width: 28px; height: 28px; background: #ffd700; color: #1a1a2e; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: bold; font-size: 0.9em; flex-shrink: 0; }
+.m-step-body .title { font-weight: bold; color: #fff; margin-bottom: 4px; font-size: 0.95em; }
+.m-step-body .desc { color: #aaa; font-size: 0.88em; line-height: 1.6; }
+.card-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); gap: 10px; }
+.card-item { background: #2a2a3e; border-radius: 8px; padding: 12px; display: flex; gap: 10px; }
+.card-icon { width: 36px; height: 36px; border-radius: 6px; display: flex; align-items: center; justify-content: center; font-weight: bold; color: white; flex-shrink: 0; font-size: 1em; }
+.card-item .name { font-weight: bold; font-size: 0.9em; margin-bottom: 3px; }
+.card-item .cdesc { font-size: 0.8em; color: #aaa; line-height: 1.5; }
+.m-key { display: inline-block; background: #333; border: 1px solid #555; border-radius: 5px; padding: 1px 8px; font-family: monospace; font-size: 0.85em; color: #ffd700; }
+.ctrl-table { width: 100%; border-collapse: collapse; font-size: 0.9em; }
+.ctrl-table td { padding: 8px 12px; border-bottom: 1px solid #333; color: #ccc; }
+.ctrl-table td:first-child { width: 140px; }
+.m-tip { background: #1e3a1e; border-left: 4px solid #27ae60; border-radius: 0 8px 8px 0; padding: 12px 16px; margin: 12px 0; font-size: 0.9em; color: #aaa; }
+.m-tip strong { color: #2ecc71; }
+.m-note { background: #2a2a1e; border-left: 4px solid #ffd700; border-radius: 0 8px 8px 0; padding: 12px 16px; margin: 12px 0; font-size: 0.9em; color: #aaa; }
+.m-note strong { color: #ffd700; }
+.settings-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.setting-item { background: #2a2a3e; border-radius: 8px; padding: 14px; }
+.setting-item .slabel { font-size: 0.78em; color: #aaa; margin-bottom: 4px; }
+.setting-item .svalue { font-weight: bold; color: #ffd700; font-size: 0.95em; }
+.setting-item .sdesc { font-size: 0.82em; color: #777; margin-top: 5px; }
+
+/* Touch controls */
+.dpad {
+  display: grid;
+  grid-template-columns: repeat(3, 56px);
+  grid-template-rows: repeat(3, 56px);
+  gap: 6px;
+  margin-top: 12px;
+}
+.dpad-btn {
+  width: 56px; height: 56px;
+  background: #2a2a3e; border: 2px solid #444;
+  border-radius: 12px; color: #eee; font-size: 1.4em;
+  cursor: pointer; display: flex; align-items: center; justify-content: center;
+  touch-action: manipulation; user-select: none;
+  transition: background 0.1s, transform 0.1s;
+}
+.dpad-btn:active { background: #444; transform: scale(0.92); }
+.dpad-drop {
+  grid-column: 1 / 4;
+  width: 100%; height: 48px;
+  background: #27ae60; border: none;
+  border-radius: 12px; color: #fff; font-size: 1em; font-weight: bold;
+  cursor: pointer; display: flex; align-items: center; justify-content: center;
+  touch-action: manipulation; user-select: none;
+  transition: background 0.1s, transform 0.1s;
+  margin-top: 2px;
+}
+.dpad-drop:active { background: #1e8449; transform: scale(0.97); }
+.dpad-empty { visibility: hidden; }
+
+/* Line clear flash */
+@keyframes flashRow {
+  0% { opacity: 1; }
+  50% { opacity: 0.2; }
+  100% { opacity: 1; }
+}
+</style>
+</head>
+<body>
+
+<button class="help-btn" onclick="showOverlay('manual-overlay')">?</button>
+<h1>🍻 居酒屋テトリス</h1>
+
+<!-- ===== SETUP ===== -->
+<div id="setup-screen" class="screen active">
+  <button class="btn-primary btn-big" onclick="startGame()">
+    ゲームスタート！
+  </button>
+</div>
+
+<!-- ===== PHASE 1: TETRIS ===== -->
+<div id="phase1-screen" class="screen">
+  <div style="display:flex;flex-direction:column;align-items:center">
+    <canvas id="tetris-canvas" width="300" height="600"></canvas>
+    <div class="dpad">
+      <div class="dpad-empty"></div>
+      <button class="dpad-btn" ontouchstart="e1('ArrowUp')" onclick="e1('ArrowUp')">↻</button>
+      <div class="dpad-empty"></div>
+      <button class="dpad-btn" ontouchstart="e1('ArrowLeft')" onclick="e1('ArrowLeft')">←</button>
+      <button class="dpad-btn" ontouchstart="e1('ArrowDown')" onclick="e1('ArrowDown')">↓</button>
+      <button class="dpad-btn" ontouchstart="e1('ArrowRight')" onclick="e1('ArrowRight')">→</button>
+      <button class="dpad-drop" ontouchstart="e1(' ')" onclick="e1(' ')">即落下</button>
+    </div>
+  </div>
+  <div class="sidebar">
+    <div class="panel">
+      <h3>スコア</h3>
+      <div class="score-value" id="p1-score">0</div>
+    </div>
+    <div class="panel">
+      <h3>ライン</h3>
+      <div class="score-value" id="p1-lines">0</div>
+    </div>
+    <div class="panel">
+      <h3>NEXT</h3>
+      <canvas id="next-canvas" width="120" height="120"></canvas>
+    </div>
+    </div>
+  </div>
+</div>
+
+<!-- ===== PHASE 2: CARD TETRIS ===== -->
+<div id="phase2-screen" class="screen">
+  <div style="display:flex;flex-direction:column;align-items:center">
+    <canvas id="phase2-canvas" width="300" height="750"></canvas>
+    <div class="dpad" id="p2-dpad" style="display:none">
+      <div class="dpad-empty"></div>
+      <button class="dpad-btn" ontouchstart="e2('ArrowUp')" onclick="e2('ArrowUp')">↻</button>
+      <div class="dpad-empty"></div>
+      <button class="dpad-btn" ontouchstart="e2('ArrowLeft')" onclick="e2('ArrowLeft')">←</button>
+      <button class="dpad-btn" ontouchstart="e2('ArrowDown')" onclick="e2('ArrowDown')">↓</button>
+      <button class="dpad-btn" ontouchstart="e2('ArrowRight')" onclick="e2('ArrowRight')">→</button>
+      <button class="dpad-drop" ontouchstart="e2(' ')" onclick="e2(' ')">即落下</button>
+    </div>
+  </div>
+  <div class="phase2-sidebar">
+
+    <div class="card-box" id="card-box">
+      <div class="card-desc">カードを引いてください</div>
+    </div>
+
+    <div id="draw-area">
+      <button class="btn-primary" style="width:100%;padding:10px" onclick="drawCard()">
+        カードを引く 🃏
+      </button>
+    </div>
+
+
+    <div id="place-area" style="display:none">
+      <div class="hint-box">
+        <div>← → ：移動</div>
+        <div>↑ ：回転</div>
+        <div>↓ ：落下</div>
+        <div>Space：即落下</div>
+      </div>
+      <div id="countdown-box" style="text-align:center;margin-top:8px;font-size:2em;font-weight:bold;color:#f44336"></div>
+    </div>
+
+  </div>
+
+  <!-- 右列：カウンター＋カード一覧 -->
+  <div id="phase2-right">
+
+    <div class="counter-box">
+      <div class="counter-label">📦 ストック数</div>
+      <div class="counter-row">
+        <button class="counter-btn" onclick="changeCount(-1)">−</button>
+        <div class="counter-value" id="dish-count">0</div>
+        <button class="counter-btn" onclick="changeCount(1)">＋</button>
+      </div>
+    </div>
+
+    <div class="counter-box">
+      <div class="counter-label">⏱ タイマー設定</div>
+      <div class="counter-row">
+        <button class="counter-btn" onclick="changeTimer(-1)">−</button>
+        <div style="display:flex;flex-direction:column;align-items:center">
+          <div class="counter-value" id="timer-sec-display">10</div>
+          <div style="font-size:0.75em;color:#aaa">秒</div>
+        </div>
+        <button class="counter-btn" onclick="changeTimer(1)">＋</button>
+      </div>
+    </div>
+
+    <div class="card-list-box">
+      <h3>カード設定</h3>
+      <div id="card-toggle-list"></div>
+    </div>
+
+  </div>
+  </div>
+</div>
+
+<!-- ===== OVERLAYS ===== -->
+<div class="overlay" id="manual-overlay">
+  <div class="manual-box">
+    <button class="manual-close" onclick="hideOverlay('manual-overlay')">✕</button>
+    <h1>🍻 居酒屋テトリス</h1>
+    <div class="m-subtitle">説明書</div>
+
+    <h2>ゲームの概要</h2>
+    <p>2フェーズで構成された居酒屋向けゲームです。フェーズ1でテトリスをプレイしてボードを作り、フェーズ2でそのボードをみんなで崩していきます。料理を食べるたびにストックが増え、ストックを使ってカードを引いてブロックを落とします。</p>
+
+    <h2>ゲームの流れ</h2>
+    <div class="phase-block">
+      <div class="phase-tag p1">PHASE 1</div>
+      <h3>テトリス</h3>
+      <p>普通にテトリスをプレイ。ブロックが最上段まで積み上がってゲームオーバーになったら、そのボードのままフェーズ2へ進みます。</p>
+    </div>
+    <div class="phase-block">
+      <div class="phase-tag p2">PHASE 2</div>
+      <h3>みんなでブロックを崩す</h3>
+      <p>フェーズ1のボードの上に5行の空きスペースが追加されます。料理を食べてストックを貯め、カードを引いてブロックを落としましょう。一列揃ったら消えます。</p>
+    </div>
+
+    <h2>フェーズ2 の手順</h2>
+    <div class="m-steps">
+      <div class="m-step"><div class="m-step-num">1</div><div class="m-step-body"><div class="title">料理を食べる</div><div class="desc">1品食べたら「ストック数」を＋1する。</div></div></div>
+      <div class="m-step"><div class="m-step-num">2</div><div class="m-step-body"><div class="title">カードを引く</div><div class="desc">ストックを1消費して「カードを引く」ボタンを押す。9枚からランダムで1枚引かれる。</div></div></div>
+      <div class="m-step"><div class="m-step-num">3</div><div class="m-step-body"><div class="title">ブロックを落とす</div><div class="desc">引いたカードの形のブロックが出現。タイマーが切れる前に左右移動・回転して落とす。時間切れで自動落下。</div></div></div>
+      <div class="m-step"><div class="m-step-num">4</div><div class="m-step-body"><div class="title">列が揃ったら消える</div><div class="desc">横一列が埋まるとその行が消えてスペースが広がる。</div></div></div>
+      <div class="m-step"><div class="m-step-num">5</div><div class="m-step-body"><div class="title">ゲームオーバー</div><div class="desc">ブロックが置けなくなったら終了。なるべく多くの列を消そう！</div></div></div>
+    </div>
+
+    <h2>カード一覧（全9種）</h2>
+    <div class="card-grid">
+      <div class="card-item"><div class="card-icon" style="background:#00bcd4">I</div><div><div class="name" style="color:#00bcd4">Iピース</div><div class="cdesc">横4マスの棒。うまく使うと4列一気に消せる。</div></div></div>
+      <div class="card-item"><div class="card-icon" style="background:#ffc107">O</div><div><div class="name" style="color:#ffc107">Oピース</div><div class="cdesc">2×2の正方形。回転しても変わらない。</div></div></div>
+      <div class="card-item"><div class="card-icon" style="background:#9c27b0">T</div><div><div class="name" style="color:#9c27b0">Tピース</div><div class="cdesc">T字型。隙間を埋めるのに便利。</div></div></div>
+      <div class="card-item"><div class="card-icon" style="background:#4caf50">S</div><div><div class="name" style="color:#4caf50">Sピース</div><div class="cdesc">S字型。扱いは難しめ。</div></div></div>
+      <div class="card-item"><div class="card-icon" style="background:#f44336">Z</div><div><div class="name" style="color:#f44336">Zピース</div><div class="cdesc">Z字型。Sの逆向き。</div></div></div>
+      <div class="card-item"><div class="card-icon" style="background:#2196f3">J</div><div><div class="name" style="color:#2196f3">Jピース</div><div class="cdesc">J字型。左側に角がある。</div></div></div>
+      <div class="card-item"><div class="card-icon" style="background:#ff9800">L</div><div><div class="name" style="color:#ff9800">Lピース</div><div class="cdesc">L字型。右側に角がある。</div></div></div>
+      <div class="card-item"><div class="card-icon" style="background:#ffd700;color:#1a1a2e">A</div><div><div class="name" style="color:#ffd700">ACE</div><div class="cdesc">好きなピースを自分で選べる。ラッキー！</div></div></div>
+      <div class="card-item"><div class="card-icon" style="background:#555">🃏</div><div><div class="name" style="color:#aaa">ジョーカー</div><div class="cdesc">パス。ブロックを置かずにターン終了。</div></div></div>
+    </div>
+    <div class="m-tip" style="margin-top:12px"><strong>カードの絞り込み：</strong>画面右「カード設定」でON/OFFを切り替えると、ONのカードだけが抽選対象になります。</div>
+
+    <h2>操作方法</h2>
+    <h3>フェーズ1（テトリス）/ フェーズ2（ブロックを落とす）共通</h3>
+    <table class="ctrl-table">
+      <tr><td><span class="m-key">←</span> <span class="m-key">→</span></td><td>左右に移動</td></tr>
+      <tr><td><span class="m-key">↑</span></td><td>回転</td></tr>
+      <tr><td><span class="m-key">↓</span></td><td>1マス落下</td></tr>
+      <tr><td><span class="m-key">Space</span></td><td>即落下（ハードドロップ）</td></tr>
+    </table>
+
+    <h2>画面右の設定</h2>
+    <div class="settings-grid">
+      <div class="setting-item"><div class="slabel">📦 ストック数</div><div class="svalue">＋ / − で調整</div><div class="sdesc">料理を食べたら＋1。カードを引くたびに−1。</div></div>
+      <div class="setting-item"><div class="slabel">⏱ タイマー設定</div><div class="svalue">1〜10秒（1秒単位）</div><div class="sdesc">時間切れで自動落下。短いほど盛り上がる！</div></div>
+      <div class="setting-item"><div class="slabel">🃏 カード設定</div><div class="svalue">ON / OFF トグル</div><div class="sdesc">ONのカードだけが抽選対象になる。</div></div>
+      <div class="setting-item"><div class="slabel">ゴーストブロック</div><div class="svalue">薄い影で表示</div><div class="sdesc">ブロックが落ちる場所をプレビュー表示。</div></div>
+    </div>
+    <div class="m-note" style="margin-top:12px"><strong>ヒント：</strong>タイマーは最初10秒から始めて、慣れてきたら5秒以下に挑戦！</div>
+
+    <div style="text-align:center;margin-top:32px">
+      <button class="btn-primary" onclick="hideOverlay('manual-overlay')" style="padding:10px 32px">閉じる</button>
+    </div>
+  </div>
+</div>
+
+<div class="overlay" id="ace-overlay">
+  <div class="overlay-box">
+    <h2>🅰 ACE！</h2>
+    <p style="font-size:0.9em;color:#aaa">好きなピースを選んでください</p>
+    <div id="ace-piece-selector" style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-top:8px"></div>
+  </div>
+</div>
+
+<div class="overlay" id="phase-end-overlay">
+  <div class="overlay-box">
+    <h2>ゲームオーバー！</h2>
+    <p>テトリスが積み上がりました！<br>このボードを使ってフェーズ2スタート！</p>
+    <p style="font-size:0.85em;color:#aaa">カードを引いてブロックを落とし、列を消しましょう</p>
+    <button class="btn-primary btn-big" onclick="startPhase2()">フェーズ2スタート！</button>
+  </div>
+</div>
+
+<div class="overlay" id="gameover-overlay">
+  <div class="overlay-box">
+    <h2>ゲーム終了！</h2>
+    <p id="gameover-msg"></p>
+    <button class="btn-primary btn-big" onclick="resetAll()">もう一度遊ぶ</button>
+  </div>
+</div>
+
+<script>
+'use strict';
+
+// ========== CONSTANTS ==========
+const COLS = 10, ROWS = 20, ROWS2 = 25, BS = 30; // BS = block size
+
+const PIECE_TYPES = ['I','O','T','S','Z','J','L'];
+const COLORS = {
+  I: '#00bcd4', O: '#ffc107', T: '#9c27b0',
+  S: '#4caf50', Z: '#f44336', J: '#2196f3', L: '#ff9800'
+};
+const SHAPES = {
+  I: [
+    [[0,0,0,0],[1,1,1,1],[0,0,0,0],[0,0,0,0]],
+    [[0,0,1,0],[0,0,1,0],[0,0,1,0],[0,0,1,0]],
+    [[0,0,0,0],[0,0,0,0],[1,1,1,1],[0,0,0,0]],
+    [[0,1,0,0],[0,1,0,0],[0,1,0,0],[0,1,0,0]]
+  ],
+  O: [
+    [[1,1],[1,1]],[[1,1],[1,1]],[[1,1],[1,1]],[[1,1],[1,1]]
+  ],
+  T: [
+    [[0,1,0],[1,1,1],[0,0,0]],
+    [[0,1,0],[0,1,1],[0,1,0]],
+    [[0,0,0],[1,1,1],[0,1,0]],
+    [[0,1,0],[1,1,0],[0,1,0]]
+  ],
+  S: [
+    [[0,1,1],[1,1,0],[0,0,0]],
+    [[0,1,0],[0,1,1],[0,0,1]],
+    [[0,0,0],[0,1,1],[1,1,0]],
+    [[1,0,0],[1,1,0],[0,1,0]]
+  ],
+  Z: [
+    [[1,1,0],[0,1,1],[0,0,0]],
+    [[0,0,1],[0,1,1],[0,1,0]],
+    [[0,0,0],[1,1,0],[0,1,1]],
+    [[0,1,0],[1,1,0],[1,0,0]]
+  ],
+  J: [
+    [[1,0,0],[1,1,1],[0,0,0]],
+    [[0,1,1],[0,1,0],[0,1,0]],
+    [[0,0,0],[1,1,1],[0,0,1]],
+    [[0,1,0],[0,1,0],[1,1,0]]
+  ],
+  L: [
+    [[0,0,1],[1,1,1],[0,0,0]],
+    [[0,1,0],[0,1,0],[0,1,1]],
+    [[0,0,0],[1,1,1],[1,0,0]],
+    [[1,1,0],[0,1,0],[0,1,0]]
+  ]
+};
+
+// ========== STATE ==========
+let board = [];
+let cur = null;   // current piece: { type, rot, x, y }
+let next = null;
+let score = 0, lines = 0;
+let dropTimer = null;
+let phase = 0; // 0=setup 1=tetris 2=cards
+
+let players = [];
+let curPlayer = 0;
+let deck = [];
+let drawnCard = null;
+let countdownTimer = null;
+let countdownSec = 0;
+let dishCount = 0;
+let cardEnabled = {}; // カードのON/OFF状態
+let timerSeconds = 10; // タイマー設定（秒）
+
+// ========== CANVAS ==========
+const c1 = document.getElementById('tetris-canvas');
+const x1 = c1.getContext('2d');
+const cN = document.getElementById('next-canvas');
+const xN = cN.getContext('2d');
+const c2 = document.getElementById('phase2-canvas');
+const x2 = c2.getContext('2d');
+
+// ========== UTILS ==========
+function show(id) {
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+}
+function showOverlay(id) { document.getElementById(id).classList.add('show'); }
+function hideOverlay(id) { document.getElementById(id).classList.remove('show'); }
+
+function makeBoard() {
+  return Array.from({length: ROWS}, () => new Array(COLS).fill(0));
+}
+
+function shape(p) {
+  return SHAPES[p.type][p.rot % SHAPES[p.type].length];
+}
+
+function valid(p, dx=0, dy=0, dr=0) {
+  const rots = SHAPES[p.type].length;
+  const s = SHAPES[p.type][(p.rot + dr + rots) % rots];
+  const maxRows = phase === 2 ? ROWS2 : ROWS;
+  for (let r = 0; r < s.length; r++) {
+    for (let c = 0; c < s[r].length; c++) {
+      if (!s[r][c]) continue;
+      const nx = p.x + c + dx;
+      const ny = p.y + r + dy;
+      if (nx < 0 || nx >= COLS || ny >= maxRows) return false;
+      if (ny >= 0 && board[ny][nx]) return false;
+    }
+  }
+  return true;
+}
+
+function lock(p) {
+  const s = shape(p);
+  const maxRows = phase === 2 ? ROWS2 : ROWS;
+  for (let r = 0; r < s.length; r++) {
+    for (let c = 0; c < s[r].length; c++) {
+      if (!s[r][c]) continue;
+      const ny = p.y + r, nx = p.x + c;
+      if (ny >= 0 && ny < maxRows) board[ny][nx] = COLORS[p.type];
+    }
+  }
+  sweepLines();
+}
+
+function sweepLines() {
+  const maxRows = phase === 2 ? ROWS2 : ROWS;
+  let cleared = 0;
+  for (let r = maxRows - 1; r >= 0; r--) {
+    if (board[r].every(c => c !== 0)) {
+      board.splice(r, 1);
+      board.unshift(new Array(COLS).fill(0));
+      cleared++;
+      r++;
+    }
+  }
+  if (cleared > 0 && phase === 1) {
+    lines += cleared;
+    score += [0, 100, 300, 500, 800][cleared] || cleared * 200;
+    document.getElementById('p1-score').textContent = score;
+    document.getElementById('p1-lines').textContent = lines;
+  }
+}
+
+function makePiece(type) {
+  const s = SHAPES[type][0];
+  return { type, rot: 0, x: Math.floor((COLS - s[0].length) / 2), y: 0 };
+}
+
+function randType() {
+  return PIECE_TYPES[Math.floor(Math.random() * PIECE_TYPES.length)];
+}
+
+// ========== DRAW ==========
+function drawBlock(ctx, col, row, color) {
+  ctx.fillStyle = color;
+  ctx.fillRect(col * BS + 1, row * BS + 1, BS - 2, BS - 2);
+  // shine
+  ctx.fillStyle = 'rgba(255,255,255,0.18)';
+  ctx.fillRect(col * BS + 1, row * BS + 1, BS - 2, 5);
+  ctx.fillRect(col * BS + 1, row * BS + 1, 5, BS - 2);
+}
+
+function drawGrid(ctx) {
+  ctx.fillStyle = '#0d0d1a';
+  ctx.fillRect(0, 0, COLS * BS, ROWS * BS);
+  ctx.strokeStyle = '#1e1e30';
+  ctx.lineWidth = 0.5;
+  for (let r = 0; r < ROWS; r++)
+    for (let c = 0; c < COLS; c++)
+      ctx.strokeRect(c * BS, r * BS, BS, BS);
+}
+
+function drawBoardCells(ctx) {
+  for (let r = 0; r < board.length; r++)
+    for (let c = 0; c < COLS; c++)
+      if (board[r][c]) drawBlock(ctx, c, r, board[r][c]);
+}
+
+function drawPieceWithGhost(ctx, p) {
+  // ghost
+  let gy = p.y;
+  while (valid({...p, y: gy + 1})) gy++;
+  const s = shape(p);
+  for (let r = 0; r < s.length; r++)
+    for (let c = 0; c < s[r].length; c++)
+      if (s[r][c] && (gy + r) >= 0) {
+        ctx.fillStyle = 'rgba(255,255,255,0.12)';
+        ctx.fillRect((p.x+c)*BS+1, (gy+r)*BS+1, BS-2, BS-2);
+      }
+  // piece
+  for (let r = 0; r < s.length; r++)
+    for (let c = 0; c < s[r].length; c++)
+      if (s[r][c] && (p.y+r) >= 0)
+        drawBlock(ctx, p.x+c, p.y+r, COLORS[p.type]);
+}
+
+function renderPhase1() {
+  drawGrid(x1);
+  drawBoardCells(x1);
+  if (cur) drawPieceWithGhost(x1, cur);
+}
+
+function renderNext() {
+  xN.fillStyle = '#1a1a2e';
+  xN.fillRect(0, 0, 120, 120);
+  if (!next) return;
+  const s = SHAPES[next.type][0];
+  const sz = 24;
+  const ox = Math.floor((4 - s[0].length) / 2);
+  const oy = Math.floor((4 - s.length) / 2);
+  for (let r = 0; r < s.length; r++)
+    for (let c = 0; c < s[r].length; c++)
+      if (s[r][c]) {
+        xN.fillStyle = COLORS[next.type];
+        xN.fillRect((ox+c)*sz+1, (oy+r)*sz+1, sz-2, sz-2);
+      }
+}
+
+
+function renderPhase2() {
+  // フェーズ2は25行
+  x2.fillStyle = '#0d0d1a';
+  x2.fillRect(0, 0, COLS * BS, ROWS2 * BS);
+  x2.strokeStyle = '#1e1e30';
+  x2.lineWidth = 0.5;
+  for (let r = 0; r < ROWS2; r++)
+    for (let c = 0; c < COLS; c++)
+      x2.strokeRect(c * BS, r * BS, BS, BS);
+  // 追加した5行の下端に境界線
+  x2.strokeStyle = '#ffd70044';
+  x2.lineWidth = 1.5;
+  x2.beginPath();
+  x2.moveTo(0, 5 * BS);
+  x2.lineTo(COLS * BS, 5 * BS);
+  x2.stroke();
+  x2.lineWidth = 0.5;
+  drawBoardCells(x2);
+  if (cur) drawPieceWithGhost(x2, cur);
+}
+
+function renderCardPiece(type) {
+  const canvas = document.getElementById('card-mini-canvas');
+  if (!canvas) return;
+  const ctx = canvas.getContext('2d');
+  ctx.fillStyle = '#1a1a2e';
+  ctx.fillRect(0, 0, 100, 100);
+  const s = SHAPES[type][0];
+  const sz = 22;
+  const ox = Math.floor((4 - s[0].length) / 2);
+  const oy = Math.floor((4 - s.length) / 2);
+  for (let r = 0; r < s.length; r++)
+    for (let c = 0; c < s[r].length; c++)
+      if (s[r][c]) {
+        ctx.fillStyle = COLORS[type];
+        ctx.fillRect((ox+c)*sz+3+1, (oy+r)*sz+3+1, sz-2, sz-2);
+        ctx.fillStyle = 'rgba(255,255,255,0.18)';
+        ctx.fillRect((ox+c)*sz+3+1, (oy+r)*sz+3+1, sz-2, 4);
+        ctx.fillRect((ox+c)*sz+3+1, (oy+r)*sz+3+1, 4, sz-2);
+      }
+}
+
+// ========== SETUP ==========
+function startGame() {
+  startPhase1();
+}
+
+function changeTimer(delta) {
+  timerSeconds = Math.min(10, Math.max(1, timerSeconds + delta));
+  document.getElementById('timer-sec-display').textContent = timerSeconds;
+}
+
+// ========== PHASE 1 ==========
+function startPhase1() {
+  phase = 1;
+  board = makeBoard();
+  score = 0; lines = 0;
+  document.getElementById('p1-score').textContent = '0';
+  document.getElementById('p1-lines').textContent = '0';
+  show('phase1-screen');
+  next = makePiece(randType());
+  spawnCur();
+  if (dropTimer) clearInterval(dropTimer);
+  dropTimer = setInterval(tick, 500);
+}
+
+function spawnCur() {
+  cur = next;
+  next = makePiece(randType());
+  renderNext();
+  if (!valid(cur)) {
+    // game over phase 1
+    clearInterval(dropTimer);
+    dropTimer = null;
+    cur = null;
+    renderPhase1();
+    showOverlay('phase-end-overlay');
+  }
+}
+
+function tick() {
+  if (!cur) return;
+  if (valid(cur, 0, 1)) {
+    cur.y++;
+  } else {
+    lock(cur);
+    spawnCur();
+  }
+  renderPhase1();
+}
+
+// ========== PHASE 2 ==========
+function startPhase2() {
+  hideOverlay('phase-end-overlay');
+  phase = 2;
+  // ボードの上に5行追加
+  for (let i = 0; i < 5; i++) board.unshift(new Array(COLS).fill(0));
+  cur = null;
+  drawnCard = null;
+  dishCount = 0;
+  document.getElementById('dish-count').textContent = '0';
+  initDeck();
+  initCardToggles();
+  show('phase2-screen');
+  showCardUI('idle');
+  renderPhase2();
+}
+
+function initDeck() {
+  deck = [...PIECE_TYPES, 'A', 'Joker'];
+}
+
+function initCardToggles() {
+  // 全カードをデフォルトONで初期化
+  [...PIECE_TYPES, 'A', 'Joker'].forEach(c => { cardEnabled[c] = true; });
+  renderCardToggleList();
+}
+
+function miniPieceHTML(type) {
+  const s = SHAPES[type][0];
+  const color = COLORS[type];
+  const cols = s[0].length;
+  let html = `<div style="display:inline-grid;grid-template-columns:repeat(${cols},8px);gap:1px;vertical-align:middle">`;
+  for (let r = 0; r < s.length; r++)
+    for (let c = 0; c < s[r].length; c++)
+      html += `<div style="width:8px;height:8px;background:${s[r][c] ? color : 'transparent'};border-radius:1px"></div>`;
+  html += '</div>';
+  return html;
+}
+
+function renderCardToggleList() {
+  const list = document.getElementById('card-toggle-list');
+  if (!list) return;
+  const allCards = [...PIECE_TYPES, 'A', 'Joker'];
+  list.innerHTML = allCards.map(c => {
+    const color = COLORS[c] || (c === 'A' ? '#ffd700' : '#888');
+    const checked = cardEnabled[c] ? 'checked' : '';
+    const preview = PIECE_TYPES.includes(c)
+      ? miniPieceHTML(c)
+      : `<span style="font-size:1.3em">${c === 'A' ? '🅰' : '🃏'}</span>`;
+    return `
+      <div class="card-toggle-row">
+        <div style="display:flex;align-items:center;gap:5px">
+          ${preview}
+        </div>
+        <label class="toggle">
+          <input type="checkbox" ${checked} onchange="toggleCard('${c}', this.checked)">
+          <span class="toggle-slider"></span>
+        </label>
+      </div>`;
+  }).join('');
+}
+
+function toggleCard(card, enabled) {
+  cardEnabled[card] = enabled;
+}
+
+function changeCount(delta) {
+  dishCount = Math.max(0, dishCount + delta);
+  document.getElementById('dish-count').textContent = dishCount;
+}
+
+function drawCard() {
+  // ONになっているカードだけから抽選
+  const available = [...PIECE_TYPES, 'A', 'Joker'].filter(c => cardEnabled[c]);
+  if (available.length === 0) { alert('カードが1枚もONになっていません！'); return; }
+  drawnCard = available[Math.floor(Math.random() * available.length)];
+
+  if (drawnCard === 'Joker') {
+    showCardUI('joker');
+    setTimeout(() => nextPlayer(), 1800);
+  } else if (drawnCard === 'A') {
+    showCardUI('ace');
+    showAceSelector();
+  } else {
+    showCardUI('piece', drawnCard);
+    beginPlacement(drawnCard);
+  }
+}
+
+function showAceSelector() {
+  document.getElementById('draw-area').style.display = 'none';
+  document.getElementById('place-area').style.display = 'none';
+
+  const sel = document.getElementById('ace-piece-selector');
+  sel.innerHTML = '';
+  PIECE_TYPES.forEach(type => {
+    const btn = document.createElement('button');
+    btn.style.background = '#1a1a2e';
+    btn.style.border = `2px solid ${COLORS[type]}`;
+    btn.style.borderRadius = '8px';
+    btn.style.padding = '12px';
+    btn.style.cursor = 'pointer';
+    btn.innerHTML = miniPieceHTML(type);
+    btn.onclick = () => {
+      hideOverlay('ace-overlay');
+      showCardUI('piece', type);
+      beginPlacement(type);
+    };
+    sel.appendChild(btn);
+  });
+  showOverlay('ace-overlay');
+}
+
+function beginPlacement(type) {
+  const s = SHAPES[type][0];
+  cur = { type, rot: 0, x: Math.floor((COLS - s[0].length) / 2), y: 0 };
+
+  if (!valid(cur)) {
+    cur = null;
+    document.getElementById('gameover-msg').textContent = 'ブロックを置けなくなりました！';
+    showOverlay('gameover-overlay');
+    return;
+  }
+
+  document.getElementById('draw-area').style.display = 'none';
+  document.getElementById('place-area').style.display = 'block';
+  document.getElementById('p2-dpad').style.display = 'grid';
+  renderPhase2();
+  startCountdown();
+}
+
+function startCountdown() {
+  if (countdownTimer) clearInterval(countdownTimer);
+  countdownSec = timerSeconds;
+  updateCountdownUI();
+  countdownTimer = setInterval(() => {
+    countdownSec--;
+    updateCountdownUI();
+    if (countdownSec <= 0) {
+      clearInterval(countdownTimer);
+      countdownTimer = null;
+      hardDrop();
+    }
+  }, 1000);
+}
+
+function updateCountdownUI() {
+  const el = document.getElementById('countdown-box');
+  if (!el) return;
+  if (countdownSec <= 0) { el.textContent = ''; return; }
+  el.textContent = `⏱ ${countdownSec}`;
+  el.style.color = countdownSec <= 10 ? '#f44336' : '#ffd700';
+}
+
+function hardDrop() {
+  if (!cur) return;
+  if (countdownTimer) { clearInterval(countdownTimer); countdownTimer = null; }
+  updateCountdownUI();
+  while (valid(cur, 0, 1)) cur.y++;
+  lock(cur);
+  cur = null;
+  document.getElementById('place-area').style.display = 'none';
+  document.getElementById('p2-dpad').style.display = 'none';
+  renderPhase2();
+  setTimeout(() => nextPlayer(), 400);
+}
+
+function nextPlayer() {
+  drawnCard = null;
+  showCardUI('idle');
+}
+
+function showCardUI(mode, type) {
+  const box = document.getElementById('card-box');
+  document.getElementById('draw-area').style.display = 'none';
+  document.getElementById('place-area').style.display = 'none';
+
+  if (mode === 'idle') {
+    box.innerHTML = '<div class="card-desc">カードを引いてください</div>';
+    document.getElementById('draw-area').style.display = 'block';
+  } else if (mode === 'joker') {
+    box.innerHTML = `
+      <div style="font-size:2.5em">🃏</div>
+      <div class="card-piece-name" style="color:#aaa">JOKER</div>
+      <div class="card-desc">パス！次のプレイヤーへ</div>
+    `;
+  } else if (mode === 'ace') {
+    box.innerHTML = `
+      <div style="font-size:2.5em">🅰</div>
+      <div class="card-piece-name" style="color:#ffd700">ACE</div>
+      <div class="card-desc">好きなピースを選んで！</div>
+    `;
+  } else if (mode === 'piece' && type) {
+    box.innerHTML = `
+      <div class="card-label">引いたカード</div>
+      <div class="card-piece-name" style="color:${COLORS[type]}">${type}</div>
+      <canvas id="card-mini-canvas" width="100" height="100"></canvas>
+    `;
+    setTimeout(() => renderCardPiece(type), 10);
+  }
+}
+
+function updatePlayerUI() {}
+
+function updateDeckUI() {
+  document.getElementById('deck-count-label').textContent = 'デッキ: 9枚';
+}
+
+// ========== KEYBOARD ==========
+document.addEventListener('keydown', e => {
+  if (!cur) return;
+  if (phase === 1) handleKey1(e);
+  else if (phase === 2) handleKey2(e);
+});
+
+
+// タッチボタン用ラッパー
+function e1(key) { if (cur && phase === 1) handleKey1({key, preventDefault:()=>{}}); }
+function e2(key) { if (cur && phase === 2) handleKey2({key, preventDefault:()=>{}}); }
+
+function handleKey1(e) {
+  switch (e.key) {
+    case 'ArrowLeft':  if (valid(cur,-1)) { cur.x--; renderPhase1(); } break;
+    case 'ArrowRight': if (valid(cur, 1)) { cur.x++; renderPhase1(); } break;
+    case 'ArrowDown':  if (valid(cur,0,1)){ cur.y++; renderPhase1(); } break;
+    case 'ArrowUp':
+      if (valid(cur,0,0,1)) {
+        cur.rot = (cur.rot + 1) % SHAPES[cur.type].length;
+        renderPhase1();
+      }
+      break;
+    case ' ':
+      e.preventDefault();
+      while (valid(cur,0,1)) cur.y++;
+      lock(cur); spawnCur(); renderPhase1();
+      break;
+  }
+}
+
+function handleKey2(e) {
+  switch (e.key) {
+    case 'ArrowLeft':  if (valid(cur,-1)) { cur.x--; renderPhase2(); } break;
+    case 'ArrowRight': if (valid(cur, 1)) { cur.x++; renderPhase2(); } break;
+    case 'ArrowDown':  if (valid(cur,0,1)){ cur.y++; renderPhase2(); } break;
+    case 'ArrowUp':
+      if (valid(cur,0,0,1)) {
+        cur.rot = (cur.rot + 1) % SHAPES[cur.type].length;
+        renderPhase2();
+      }
+      break;
+    case ' ':
+      e.preventDefault();
+      hardDrop();
+      break;
+  }
+}
+
+// ========== RESET ==========
+function resetAll() {
+  hideOverlay('gameover-overlay');
+  phase = 0;
+  cur = null;
+  show('setup-screen');
+}
+
+// ========== INIT ==========
+</script>
+</body>
+</html>
